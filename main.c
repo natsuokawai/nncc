@@ -1,9 +1,19 @@
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 
+// エラー報告をして処理を終了する
+static void error(char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  vfprintf(stderr, fmt, ap);
+  fprintf(stderr, "\n");
+  exit(1);
+}
+
 int main(int argc, char **argv) {
   if (argc != 2) {
-    fprintf(stderr, "%s: invalid number of arguments\n", argv[0]);
+    error("%s: invalid number of arguments\n", argv[0]);
     return 1;
   }
 
@@ -26,7 +36,7 @@ int main(int argc, char **argv) {
       continue;
     }
 
-    fprintf(stderr, "unexpected character: '%c'\n", *p);
+    error("unexpected character: '%c'\n", *p);
     return 1;
   }
 
