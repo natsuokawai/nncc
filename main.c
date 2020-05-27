@@ -44,6 +44,11 @@ static Token *tokenize(char *p) {
   Token *cur = &head;
 
   while (*p) {
+    if (*p == ' ') {
+      p++;
+      continue;
+    }
+
     if (isdigit(*p)) {
       // 数値が何桁続くかわからないのでとトークンだけ先に作る
       // その後 strtol で数値を取得し、数字の桁数だけポインタをインクリメントする
