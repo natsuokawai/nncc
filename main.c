@@ -5,14 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-// エラー報告をして処理を終了する
-static void error(char *fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-  vfprintf(stderr, fmt, ap);
-  fprintf(stderr, "\n");
-  exit(1);
-}
+// ユーザーの入力を保持しておくグローバル変数
+static char *current_input;
 
 // トークンの種類
 typedef enum {
@@ -30,6 +24,47 @@ struct Token {
   int len;        // トークンの長さ
 };
 
+
+//
+// エラー表示
+//
+
+// エラー報告をして処理を終了する
+static void error(char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  vfprintf(stderr, fmt, ap);
+  fprintf(stderr, "\n");
+  exit(1);
+}
+
+static void verror_at(char *loc, char *fmt, va_list ap) {
+  int pos = loc - current_input;
+  fprintf(stderr, "%s\n", current_input);
+  fprintf(stderr, "%*s", pos, "");
+  fprintf(stderr, "^ ");
+  vfprintf(stderr, fmt, ap);
+  fprintf(stderr, "\n");
+  exit(1);
+}
+
+static void error_at(char *loc, char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  verror_at(loc, fmt, ap);
+}
+
+static void error_tok(Token *tok, char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  verror_at(tok->str, fmt, ap);
+}
+
+
+//
+// トークナイザ
+//
+
 static Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
   Token *tok = calloc(1, sizeof(Token));
   tok->kind = kind;
@@ -39,7 +74,8 @@ static Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
   return tok;
 }
 
-static Token *tokenize(char *p) {
+static Token *tokenize(void) {
+  char *p = current_input;
   Token head = {};
   Token *cur = &head;
 
@@ -64,12 +100,17 @@ static Token *tokenize(char *p) {
       continue;
     }
 
-    error("invalid token");
+    error_at(p, "invalid token");
   }
 
   new_token(TK_EOF, cur, p, 0);
   return head.next;
 }
+
+
+//
+// トークンの読み取り
+//
 
 static bool equal(Token *tok, char *s) {
   return strlen(s) == tok->len && !strncmp(tok->str, s, tok->len);
@@ -77,14 +118,15 @@ static bool equal(Token *tok, char *s) {
 
 // tok->str が s の場合は次のトークンを返す
 static Token *skip(Token *tok, char *s) {
-  if (!equal(tok, s)) error("expected '%s'", s);
+  if (!equal(tok, s)) error_tok(tok, "expected '%s'", s);
   return tok->next;
 }
 
 static long get_number(Token *tok) {
-  if (tok->kind != TK_NUM) error("expected a number");
+  if (tok->kind != TK_NUM) error_tok(tok, "expected a number");
   return tok->val;
 }
+
 
 int main(int argc, char **argv) {
   if (argc != 2) {
@@ -92,7 +134,8 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  Token *tok = tokenize(argv[1]);
+  current_input = argv[1];
+  Token *tok = tokenize();
 
   printf(".global main\n");
   printf("main:\n");
